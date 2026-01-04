@@ -1,6 +1,6 @@
 # Architecture Documentation: project-starter Plugin
 
-> **Last Updated**: 2026-01-03
+> **Last Updated**: 2026-01-04
 > **Version**: 1.0.0
 > **Maintainer**: CloudAI-X
 
@@ -39,148 +39,127 @@ This plugin provides a comprehensive framework for:
 
 ## System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        USER INTERACTION LAYER                        │
-│                                                                       │
-│  Natural Language Prompts  ←→  Slash Commands (/project-starter:*)  │
-└───────────────────────────┬─────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                          CLAUDE CODE CORE                            │
-│                                                                       │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │              project-starter Plugin Runtime                  │   │
-│  │                                                               │   │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │   │
-│  │  │   Commands   │  │    Agents    │  │    Skills    │      │   │
-│  │  │   (17 cmds)  │  │  (7 agents)  │  │  (6 domains) │      │   │
-│  │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │   │
-│  │         │                  │                  │              │   │
-│  │         └──────────────────┼──────────────────┘              │   │
-│  │                            │                                 │   │
-│  │                            ▼                                 │   │
-│  │                  ┌──────────────────┐                        │   │
-│  │                  │   Tool Execution  │                       │   │
-│  │                  │  (Read/Write/Bash)│                       │   │
-│  │                  └─────────┬─────────┘                       │   │
-│  │                            │                                 │   │
-│  └────────────────────────────┼─────────────────────────────────┘   │
-│                               │                                     │
-│         ┌─────────────────────┼─────────────────────┐              │
-│         │        HOOK INTERCEPTION POINTS            │              │
-│         │                                             │              │
-│         │  PreToolUse  →  Edit/Write/Bash           │              │
-│         │  PostToolUse →  Edit/Write                │              │
-│         │  SessionStart → Environment validation     │              │
-│         │  UserPromptSubmit → Prompt analysis        │              │
-│         │  Notification → User input needed          │              │
-│         │  Stop → Task completion                    │              │
-│         └─────────────────────┬─────────────────────┘              │
-└───────────────────────────────┼─────────────────────────────────────┘
-                                │
-                                ▼
-                    ┌───────────────────────┐
-                    │   Hook Scripts (8)    │
-                    │  Python/Bash Scripts  │
-                    └───────────────────────┘
-                                │
-                                ▼
-                    ┌───────────────────────┐
-                    │   File System / Git   │
-                    │   External Services   │
-                    └───────────────────────┘
+```mermaid
+graph TB
+    subgraph USER["USER INTERACTION LAYER"]
+        NL[Natural Language Prompts]
+        SC[Slash Commands<br/>/project-starter:*]
+    end
+
+    subgraph CORE["CLAUDE CODE CORE"]
+        subgraph PLUGIN["project-starter Plugin Runtime"]
+            CMD[Commands<br/>17 cmds]
+            AGT[Agents<br/>7 agents]
+            SKL[Skills<br/>6 domains]
+
+            CMD --> TOOLS
+            AGT --> TOOLS
+            SKL --> TOOLS
+
+            TOOLS[Tool Execution<br/>Read/Write/Bash]
+        end
+
+        subgraph HOOKS["HOOK INTERCEPTION POINTS"]
+            PRE[PreToolUse → Edit/Write/Bash]
+            POST[PostToolUse → Edit/Write]
+            SESSION[SessionStart → Environment validation]
+            PROMPT[UserPromptSubmit → Prompt analysis]
+            NOTIFY[Notification → User input needed]
+            STOP[Stop → Task completion]
+        end
+
+        TOOLS --> HOOKS
+    end
+
+    SCRIPTS[Hook Scripts<br/>8 Python/Bash Scripts]
+    FS[File System / Git<br/>External Services]
+
+    NL -.-> PLUGIN
+    SC -.-> PLUGIN
+    HOOKS --> SCRIPTS
+    SCRIPTS --> FS
+
+    style USER fill:#e1f5ff
+    style CORE fill:#fff4e1
+    style PLUGIN fill:#f0f0f0
+    style HOOKS fill:#ffe1f5
+    style SCRIPTS fill:#e1ffe1
+    style FS fill:#f5f5f5
 ```
 
 ---
 
 ## Component Architecture
 
-```
-project-starter/
-│
-├─ ENTRY POINTS (User Interface)
-│  │
-│  ├─ [1] Commands Layer (17 commands)
-│  │   ├─── Output Styles:  /architect, /rapid, /mentor, /review
-│  │   ├─── Git Workflow:   /commit, /commit-push-pr, /sync-branch
-│  │   ├─── Verification:   /verify-changes, /run-tests, /lint-check
-│  │   └─── Quick Actions:  /quick-fix, /add-tests, /lint-fix
-│  │
-│  └─ [2] Natural Language → Auto-triggers Agents/Skills
-│
-├─ EXECUTION LAYER
-│  │
-│  ├─ [3] Agents (Specialized Sub-agents)
-│  │   │
-│  │   ├─ orchestrator ───────→ Coordinates multi-step tasks
-│  │   │                        Spawns other agents via Task tool
-│  │   │                        Model: opus (most capable)
-│  │   │
-│  │   ├─ code-reviewer ──────→ Quality gates & best practices
-│  │   │                        Tools: Read, Grep, Glob, Bash
-│  │   │                        Model: sonnet
-│  │   │
-│  │   ├─ debugger ───────────→ Systematic error investigation
-│  │   │                        Tools: Read, Edit, Bash, Grep
-│  │   │                        Model: sonnet
-│  │   │
-│  │   ├─ docs-writer ────────→ Technical documentation
-│  │   │                        Tools: Read, Write, Edit
-│  │   │                        Model: sonnet
-│  │   │
-│  │   ├─ security-auditor ───→ Vulnerability detection
-│  │   │                        Tools: Read, Grep, Glob, Bash
-│  │   │                        Model: sonnet
-│  │   │
-│  │   ├─ refactorer ─────────→ Code structure improvement
-│  │   │                        Tools: Read, Write, Edit, Grep
-│  │   │                        Model: sonnet
-│  │   │
-│  │   └─ test-architect ─────→ Test strategy & implementation
-│  │                            Tools: Read, Write, Edit, Bash
-│  │                            Model: sonnet
-│  │
-│  └─ [4] Skills (Knowledge Domains - Auto-applied)
-│      │
-│      ├─ analyzing-projects ────→ Codebase exploration patterns
-│      ├─ designing-tests ───────→ Testing strategies (unit/e2e)
-│      ├─ designing-architecture ─→ Architecture patterns
-│      ├─ designing-apis ────────→ REST/GraphQL best practices
-│      ├─ managing-git ──────────→ Version control workflows
-│      └─ optimizing-performance ─→ Performance analysis
-│
-├─ AUTOMATION LAYER
-│  │
-│  └─ [5] Hooks (Event-driven Scripts)
-│      │
-│      ├─ SessionStart Hook
-│      │   └─→ validate-environment.py (Check Node/Python/Git versions)
-│      │
-│      ├─ UserPromptSubmit Hook
-│      │   └─→ validate-prompt.py (Suggest relevant agents)
-│      │
-│      ├─ PreToolUse Hooks (Before Edit/Write/Bash)
-│      │   ├─→ protect-files.py (Block .env, lock files, .git)
-│      │   ├─→ security-check.py (Detect secrets/credentials)
-│      │   └─→ log-commands.sh (Track Bash commands)
-│      │
-│      ├─ PostToolUse Hooks (After Edit/Write)
-│      │   └─→ format-on-edit.py (Auto-format with Prettier/Black)
-│      │
-│      ├─ Notification Hook
-│      │   └─→ notify-input.sh (Desktop notification on input)
-│      │
-│      └─ Stop Hook
-│          └─→ notify-complete.sh (Completion notification)
-│
-└─ CONFIGURATION
-    │
-    ├─ .claude-plugin/plugin.json ──→ Plugin manifest
-    ├─ hooks/hooks.json ─────────────→ Hook registration & matchers
-    ├─ CLAUDE.md ────────────────────→ Development guidelines
-    └─ templates/ ───────────────────→ Project templates
+```mermaid
+graph TB
+    ROOT[project-starter]
+
+    subgraph ENTRY["ENTRY POINTS - User Interface"]
+        CMD_LAYER["Commands Layer<br/>17 commands"]
+        CMD_OUTPUT["Output Styles<br/>/architect, /rapid, /mentor, /review"]
+        CMD_GIT["Git Workflow<br/>/commit, /commit-push-pr, /sync-branch"]
+        CMD_VERIFY["Verification<br/>/verify-changes, /run-tests, /lint-check"]
+        CMD_QUICK["Quick Actions<br/>/quick-fix, /add-tests, /lint-fix"]
+        NL_TRIGGER["Natural Language<br/>Auto-triggers Agents/Skills"]
+    end
+
+    subgraph EXEC["EXECUTION LAYER"]
+        subgraph AGENTS["Agents - Specialized Sub-agents"]
+            ORCH["orchestrator<br/>Coordinates multi-step tasks<br/>Model: opus"]
+            REVIEW["code-reviewer<br/>Quality gates & best practices<br/>Model: sonnet"]
+            DEBUG["debugger<br/>Systematic error investigation<br/>Model: sonnet"]
+            DOCS["docs-writer<br/>Technical documentation<br/>Model: sonnet"]
+            SEC["security-auditor<br/>Vulnerability detection<br/>Model: sonnet"]
+            REFACT["refactorer<br/>Code structure improvement<br/>Model: sonnet"]
+            TEST["test-architect<br/>Test strategy & implementation<br/>Model: sonnet"]
+        end
+
+        subgraph SKILLS["Skills - Knowledge Domains"]
+            SKILL1["analyzing-projects<br/>Codebase exploration"]
+            SKILL2["designing-tests<br/>Testing strategies"]
+            SKILL3["designing-architecture<br/>Architecture patterns"]
+            SKILL4["designing-apis<br/>REST/GraphQL practices"]
+            SKILL5["managing-git<br/>Version control"]
+            SKILL6["optimizing-performance<br/>Performance analysis"]
+        end
+    end
+
+    subgraph AUTO["AUTOMATION LAYER"]
+        subgraph HOOKS["Hooks - Event-driven Scripts"]
+            SESS["SessionStart Hook<br/>validate-environment.py"]
+            PROMPT["UserPromptSubmit Hook<br/>validate-prompt.py"]
+            PRE["PreToolUse Hooks<br/>protect-files.py<br/>security-check.py<br/>log-commands.sh"]
+            POST["PostToolUse Hooks<br/>format-on-edit.py"]
+            NOTIF["Notification Hook<br/>notify-input.sh"]
+            STOP["Stop Hook<br/>notify-complete.sh"]
+        end
+    end
+
+    subgraph CONFIG["CONFIGURATION"]
+        MANIFEST["plugin.json<br/>Plugin manifest"]
+        HOOKS_JSON["hooks.json<br/>Hook registration"]
+        CLAUDE_MD["CLAUDE.md<br/>Development guidelines"]
+        TEMPLATES["templates/<br/>Project templates"]
+    end
+
+    ROOT --> ENTRY
+    ROOT --> EXEC
+    ROOT --> AUTO
+    ROOT --> CONFIG
+
+    CMD_LAYER --> CMD_OUTPUT
+    CMD_LAYER --> CMD_GIT
+    CMD_LAYER --> CMD_VERIFY
+    CMD_LAYER --> CMD_QUICK
+
+    style ENTRY fill:#e1f5ff
+    style EXEC fill:#fff4e1
+    style AGENTS fill:#ffe1e1
+    style SKILLS fill:#e1ffe1
+    style AUTO fill:#ffe1f5
+    style HOOKS fill:#f5e1ff
+    style CONFIG fill:#f5f5f5
 ```
 
 ### Component Details
@@ -271,8 +250,33 @@ Notification
 
 Stop
   └─ Runs when task completes
-     Use: Completion notifications
+      └─→ notify-complete.sh (Completion notification)
 ```
+
+**Hook Execution Order**:
+
+```mermaid
+graph TD
+    A["1. SessionStart"] -->|Once per session| B["2. UserPromptSubmit"]
+    B -->|User sends prompt| C{Intent Analysis / Task Planning}
+    C --> D["3. PreToolUse"]
+    D -->|Just before tool run| E["Tool Execution (Edit/Write/Bash)"]
+    E -->|Immediately after success| F["4. PostToolUse"]
+    F -->|Optional| G["5. Notification"]
+    G -->|If input needed| H{Continue Task?}
+    H -->|Yes| B
+    H -->|No| I["6. Stop"]
+    I -->|At the end of the turn| J[Result displayed to User]
+```
+
+| Order | Hook               | Assigned Scripts (Files)                                   | Trigger Timing                         | Primary Use Case                             |
+| :---- | :----------------- | :--------------------------------------------------------- | :------------------------------------- | :------------------------------------------- |
+| **1** | `SessionStart`     | `validate-environment.py`                                  | When Claude Code initializes           | Environment validation, dependency checks    |
+| **2** | `UserPromptSubmit` | `validate-prompt.py`                                       | Every time user sends a prompt         | Intent analysis, suggesting relevant agents  |
+| **3** | `PreToolUse`       | `protect-files.py`, `security-check.py`, `log-commands.sh` | Just before any tool (Read/Write/Bash) | Security gates, protecting sensitive files   |
+| **4** | `PostToolUse`      | `format-on-edit.py`                                        | Immediately after a tool succeeds      | Auto-formatting code, cleanup tasks          |
+| **5** | `Notification`     | `notify-input.sh`                                          | When Claude needs user input/updates   | Desktop or external service notifications    |
+| **6** | `Stop`             | `notify-complete.sh`                                       | After logical steps are complete       | Task completion alerts, final status reports |
 
 **Hook Exit Code Protocol**:
 

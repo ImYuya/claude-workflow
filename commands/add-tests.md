@@ -1,15 +1,15 @@
 ---
-allowed-tools: Bash(git:*), Bash(npm:*), Bash(npx:*), Bash(yarn:*), Bash(bun:*), Bash(pytest:*), Bash(go:*), Read, Write
+allowed-tools: Bash(git:*), Bash(ls:*), Bash(cat:*), Bash(npm:*), Bash(npx:*), Bash(yarn:*), Bash(bun:*), Bash(pytest:*), Bash(go:*), Read, Write
 description: Add tests for recently changed files or specified code
 argument-hint: [file path or function name]
 ---
 
 ## Context
 
-- Recently modified files: !`git diff --name-only HEAD~3 2>/dev/null | grep -E '\.(ts|tsx|js|jsx|py|go|rs)$' | head -10 || echo "No recent changes"`
-- Test framework detection: !`cat package.json 2>/dev/null | grep -E '"(jest|vitest|mocha)"' | head -1 || ls pytest.ini pyproject.toml 2>/dev/null | head -1 || echo "Unknown test framework"`
-- Existing test files: !`find . -name "*test*" -o -name "*spec*" 2>/dev/null | grep -E '\.(ts|tsx|js|jsx|py|go)$' | head -10 || echo "No test files found"`
-- Test directory structure: !`ls -la tests/ test/ __tests__/ spec/ 2>/dev/null | head -20 || echo "No standard test directory"`
+- Recently modified files: !`git diff --name-only HEAD~3 2>/dev/null | head -10 || echo "None"`
+- Test framework detection: !`cat package.json 2>/dev/null | head -20 || echo "No package.json"`
+- Existing test files: !`git ls-files "*test*" "*spec*" 2>/dev/null | head -10 || echo "None"`
+- Test directory structure: !`ls -d tests/ test/ __tests__/ spec/ 2>/dev/null || echo "None"`
 
 ## Task
 
